@@ -13,6 +13,9 @@ public abstract class Executor {
 		launchImpl();
 	}
 	protected abstract void launchImpl();
+	// "protected" because it is Executor who pulls tasks, rather than client pushing
+	//   tasks into Executor. So this method is designed to be called after the Executor
+	//   pulls next task in its thread (or other parallelization mechanism) from Conveyor.
 	protected abstract Stimulus execute(ProvisionedAlgorithm pa);
 	
 	public Conveyor getConveyor() {

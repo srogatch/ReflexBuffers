@@ -1,0 +1,62 @@
+
+	protected static class ReflexRewiringPipe {
+		private Reflex _reflex;
+		private ArrayList<RewiringComponent> _rewComps;
+		public ReflexRewiringPipe(Reflex reflex, ArrayList<RewiringComponent> rewComps) {
+			_reflex = reflex;
+			_rewComps = rewComps;
+		}
+		public Reflex getReflex() {
+			return _reflex;
+		}
+		public ArrayList<RewiringComponent> getRewComps() {
+			return _rewComps;
+		}
+	}
+
+		Map<String, ArrayList<RewiringComponent>> rrcs
+			= new HashMap<String, ArrayList<RewiringComponent>>();
+		{
+			ArrayList<RewiringComponent> rcs = stimulus.getRewiring();
+			for(int i=0; i<rcs.size(); i++) {
+				RewiringComponent rc = rcs.get(i);
+				String reflexName = rc.getReflexName();
+				ArrayList<RewiringComponent> entry = rrcs.get(reflexName);
+				if( entry == null ) {
+					entry = new ArrayList<RewiringComponent>();
+					rrcs.put(reflexName, entry);
+				}
+				entry.add(rc);
+			}
+		}
+		ArrayList<ReflexRewiringPipe> rrps = new ArrayList<Neuron.ReflexRewiringPipe>();
+		try {
+			_lock.lock();
+			for(Map.Entry<String, ArrayList<RewiringComponent>> atReflex : 
+				rrcs.entrySet()) 
+			{
+				String reflexName = atReflex.getKey();
+				Reflex reflex = _reflexes.get(reflexName);
+				ArrayList<RewiringComponent> rcs = atReflex.getValue();
+				if( reflex == null ) {
+					CoreLog._.rewiringOfAbsentReflex(reflexName, rcs);
+					continue;
+				}
+				rrps.add(new ReflexRewiringPipe(reflex, rcs));
+			}
+		} finally {
+			_lock.unlock();
+		}
+		for(int i=rrps.size()-1; i>=0; i--) {
+			Reflex reflex = rrps.get(i).getReflex();
+			// The 2-argument version is used to enforce fairness
+			if( !reflex.getLock().tryLock(0, TimeUnit.NANOSECONDS) ) {
+				continue;
+			}
+			try {
+				reflex.rewire();
+			} finally {
+				reflex.getLock().unlock();
+			}
+		}
+		//TODO: iterate over reflexes that require to wait on lock

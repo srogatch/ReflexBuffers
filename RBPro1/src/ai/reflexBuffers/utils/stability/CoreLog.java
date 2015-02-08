@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import ai.reflexBuffers.core.Token;
+import ai.reflexBuffers.core.stimuli.RewiringComponent;
 
 public class CoreLog {
 	public static CoreLog _ = new CoreLog();
@@ -34,6 +35,11 @@ public class CoreLog {
 			// Maybe print the content of the tokens, if this information would be so much 
 			//  desired in logging
 		}
+		_pwr.println();
+	}
+	public void rewiringOfAbsentReflex(String reflexName, RewiringComponent rewComp) {
+		_pwr.printf("Encountered rewiring [%s] for absent reflex [%s]. Details of rewiring: %s",
+			rewComp.getClass().toString(), reflexName, rewComp.toString());
 		_pwr.println();
 	}
 	

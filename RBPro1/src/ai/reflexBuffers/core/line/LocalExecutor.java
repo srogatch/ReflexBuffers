@@ -40,7 +40,7 @@ public class LocalExecutor extends Executor {
 
 	@Override
 	protected Stimulus execute(ProvisionedAlgorithm pa) {
-		// TODO Auto-generated method stub
+		// TODO implement execution of a provisioned algorithm
 		return null;
 	}
 }

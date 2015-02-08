@@ -2,73 +2,144 @@ package ai.reflexBuffers.core;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.locks.ReentrantLock;
 
 import ai.reflexBuffers.core.line.Conveyor;
+import ai.reflexBuffers.core.stimuli.ReflexCreation;
+import ai.reflexBuffers.core.stimuli.RewiringComponent;
 import ai.reflexBuffers.core.tokens.ProvisionedAlgorithm;
-import ai.reflexBuffers.utils.diversity.Randomizer;
 import ai.reflexBuffers.utils.stability.CoreLog;
 
 public class Neuron {
+	// A pipe to reflex holding the reflex even if it was deleted concurrently
+	protected static class ReflexDirectionPipe {
+		private Reflex _reflex;
+		private Map<String, List<Token>> _direction;
+		public ReflexDirectionPipe(Reflex reflex, Map<String, List<Token>> direction) {
+			_reflex = reflex;
+			_direction = direction;
+		}
+		public Reflex getReflex() {
+			return _reflex;
+		}
+		public Map<String, List<Token>> getDirection() {
+			return _direction;
+		}
+	};
+	
 	private Map<String, Reflex> _reflexes = new HashMap<String, Reflex>();
 	// Neuron is passed as a parameter to Conveyor constructor, so we have to create
 	//   Neuron before we create Conveyor, which is also logical because by the time of
 	//   launch of Conveyour, core structures (Neuron, Reflexes, etc) must be operational
 	private Conveyor _conveyor = null;
+	private ReentrantLock _lock = new ReentrantLock(true);
 	
 	public void setConveyor(Conveyor conveyor) {
 		_conveyor = conveyor;
 	}
 	
-	public void propagateStimulus(Stimulus stimulus) {
-		//TODO: handle reflex creation&deletion requests here first, then response
+	public Reflex getReflex(String name) {
+		try {
+			_lock.lock();
+			Reflex ans = _reflexes.get(name);
+			return ans;
+		}
+		finally {
+			_lock.unlock();
+		}
+	}
+	
+	public void rewireReflex(String reflexName, ArrayList<RewiringComponent> rcs) {
+		Reflex reflex = null;
+		int i;
+		for(i=0; i<rcs.size(); i++) {
+			RewiringComponent rewComp = rcs.get(i);
+			reflex = getReflex(reflexName);
+			if( reflex != null || (rewComp instanceof ReflexCreation) ) {
+				break;
+			}
+			CoreLog._.rewiringOfAbsentReflex(reflexName, rewComp);
+		}
+		//TODO: alter or create reflex, etc.
+	}
+	
+	public void propagateStimulus(Stimulus stimulus) throws InterruptedException {
+		//Handle reflex creation&deletion requests here first, then response
 		//  creation&deletion, then altering of activation condition of a response
-		for(Map.Entry<String, Map<String, List<Token>>> atReflex 
-			: stimulus.getDirections().entrySet()) 
+		//There can be a better order of implementing components of rewiring, e.g.
+		//  skip doing anything on a reflex that is going to be deleted, and sorting
+		//  the components so to obtain a lock once per Reflex, etc.
+		Map<String, ArrayList<RewiringComponent>> rrcs
+			= new HashMap<String, ArrayList<RewiringComponent>>();
 		{
-			Reflex reflex = _reflexes.get(atReflex.getKey());
-			if( reflex == null ) {
-				// no such reflex (?anymore)
-				CoreLog._.tokensToAbsentReflex(atReflex.getKey(), atReflex.getValue());
+			ArrayList<RewiringComponent> rcs = stimulus.getRewiring();
+			for(int i=0; i<rcs.size(); i++) {
+				RewiringComponent rc = rcs.get(i);
+				String reflexName = rc.getReflexName();
+				ArrayList<RewiringComponent> entry = rrcs.get(reflexName);
+				if( entry == null ) {
+					entry = new ArrayList<RewiringComponent>();
+					rrcs.put(reflexName, entry);
+				}
+				entry.add(rc);
+			}
+		}
+		for(Map.Entry<String, ArrayList<RewiringComponent>> atReflex : 
+			rrcs.entrySet()) 
+		{
+			rewireReflex(atReflex.getKey(), atReflex.getValue());
+		}
+		
+		// Propagate tokens to reflex buffers
+		ArrayList<ReflexDirectionPipe> rdps = new ArrayList<ReflexDirectionPipe>();
+		try {
+			_lock.lock();
+			for(Map.Entry<String, Map<String, List<Token>>> atReflex
+				: stimulus.getDirections().entrySet()) 
+			{
+				String reflexName = atReflex.getKey();
+				Reflex reflex = _reflexes.get(reflexName);
+				Map<String, List<Token>> direction = atReflex.getValue();
+				if( reflex == null ) {
+					CoreLog._.tokensToAbsentReflex(reflexName, direction);
+					continue;
+				}
+				rdps.add(new ReflexDirectionPipe(reflex, direction));
+			}
+		} finally {
+			_lock.unlock();
+		}
+		for(int i=rdps.size()-1; i>=0; i--) {
+			Reflex reflex = rdps.get(i).getReflex();
+			// The 2-argument version is used to enforce fairness
+			if( !reflex.getLock().tryLock(0, TimeUnit.NANOSECONDS) ) {
 				continue;
 			}
-			Set<Activator> allFiring = new HashSet<Activator>();
-			Set<Map.Entry<String, List<Token>>> atBufferSet = atReflex.getValue().entrySet();
-			//TODO: performance can be improved if threads work with reflexes in 2 passes
-			//  In the 1st pass - only propagate to reflexes which are not blocked by other threads
-			//  In the 2nd pass - propagate to the remaining reflexes, competing with other threads
-			//  So the implementation should be changed to ReentrantLock.tryLock()
-			synchronized(reflex) {
-				for(Map.Entry<String, List<Token>> atBuffer : atBufferSet) {
-					Buffer buffer = reflex.getBuffer(atBuffer.getKey(), true);
-					ArrayList<Activator> curFiring = buffer.acceptTokens(atBuffer.getValue());
-					if( curFiring != null ) {
-						assert( curFiring.size() >= 1);
-						allFiring.addAll(curFiring);
-					}
+			try {
+				// Push tokens to buffers and regard activations
+				reflex.acceptDirection(rdps.get(i).getDirection());
+				if( i <= rdps.size()-2 ) {
+					rdps.set(i, rdps.get(rdps.size()-1));
 				}
-				//TODO: if there are more than 1 activators firing, then permutate the 
-				//  array randomly and then greedily try to activate as many responses 
-				//  as possible
-				if( allFiring.size() == 0 ) {
-					break;
-				}
-				if( allFiring.size() == 1 ) {
-					reflex.activateResponse(allFiring.iterator().next());
-					break;
-				}
-				ArrayList<Activator> ordered = Randomizer._.makePermutatedArray(allFiring);
-				for(Activator activator : ordered) {
-					// after the previous were activated, this one may be not firing anymore
-					if( activator.canActivate() ) {
-						reflex.activateResponse(activator);
-					}
-				}
-			} // synchronized(reflex)
-		} //endfor reflexes receiving from this stimulus
+				rdps.remove(rdps.size()-1);
+			} finally {
+				reflex.getLock().unlock();
+			}
+		}
+		// Process the reflexes which were locked by another thread in the first pass
+		for(ReflexDirectionPipe rp : rdps) 
+		{
+			Reflex reflex = rp.getReflex();
+			try {
+				reflex.getLock().lock();
+				reflex.acceptDirection(rp.getDirection());
+			} finally {
+				reflex.getLock().unlock();
+			}
+		}
 	}
 	
 	public void propagateResponse(ProvisionedAlgorithm provAlg) {

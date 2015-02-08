@@ -43,7 +43,7 @@ public class Conveyor {
 		return null;
 	}
 	
-	public void propagateStimulus(Stimulus stimulus) {
+	public void propagateStimulus(Stimulus stimulus) throws InterruptedException {
 		_neuron.propagateStimulus(stimulus);
 	}
 	
