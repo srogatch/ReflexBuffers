@@ -9,6 +9,9 @@ import java.util.concurrent.locks.ReentrantLock;
 
 import ai.reflexBuffers.core.line.Conveyor;
 import ai.reflexBuffers.core.stimuli.ReflexCreation;
+import ai.reflexBuffers.core.stimuli.ReflexDeletion;
+import ai.reflexBuffers.core.stimuli.ResponseAlgorithmChange;
+import ai.reflexBuffers.core.stimuli.ResponseDeletion;
 import ai.reflexBuffers.core.stimuli.RewiringComponent;
 import ai.reflexBuffers.core.tokens.ProvisionedAlgorithm;
 import ai.reflexBuffers.utils.stability.CoreLog;
@@ -52,18 +55,105 @@ public class Neuron {
 		}
 	}
 	
+	protected Reflex createReflex(ReflexCreation rewComp) {
+		String reflexName = rewComp.getReflexName();
+		try {
+			_lock.lock();
+			Reflex reflex = _reflexes.get(reflexName);
+			if( reflex == null ) {
+				reflex = new Reflex(this, reflexName);
+				_reflexes.put(reflexName, reflex);
+			}
+			return reflex;
+		}
+		finally {
+			_lock.unlock();
+		}
+	}
+	
+	protected void deleteReflex(ReflexDeletion rewComp) {
+		String reflexName = rewComp.getReflexName();
+		try {
+			_lock.lock();
+			_reflexes.remove(reflexName);
+		}
+		finally {
+			_lock.unlock();
+		}
+	}
+	
+	protected void deleteResponse(Reflex reflex, ResponseDeletion rewComp) {
+		try {
+			reflex.getLock().lock();
+			//TODO: delete response
+		}
+		finally {
+			reflex.getLock().unlock();
+		}
+	}
+	
+	protected void changeResponseAlgorithm(Reflex reflex, ResponseAlgorithmChange rac) {
+		try {
+			reflex.getLock().lock();
+			//TODO: create response or change its algorithm
+		}
+		finally {
+			reflex.getLock().unlock();
+		}
+	}
+	
+	protected void rewireResponse(Reflex reflex, RewiringComponent rewComp) {
+		if( rewComp instanceof ResponseDeletion ) {
+			deleteResponse(reflex, (ResponseDeletion)rewComp);
+		} else if( rewComp instanceof ResponseAlgorithmChange ) {
+			changeResponseAlgorithm(reflex, (ResponseAlgorithmChange)rewComp);
+		}
+	}
+	
 	public void rewireReflex(String reflexName, ArrayList<RewiringComponent> rcs) {
 		Reflex reflex = null;
-		int i;
-		for(i=0; i<rcs.size(); i++) {
-			RewiringComponent rewComp = rcs.get(i);
-			reflex = getReflex(reflexName);
-			if( reflex != null || (rewComp instanceof ReflexCreation) ) {
-				break;
+		int pos=0;
+		while( pos<rcs.size() ) {
+			RewiringComponent rewComp = null;
+			// Skip rewirings for non-existing reflexes
+			for(; pos<rcs.size(); pos++) {
+				rewComp = rcs.get(pos);
+				reflex = getReflex(reflexName);
+				if( (reflex != null) || (rewComp instanceof ReflexCreation) ) {
+					break;
+				}
+				CoreLog._.rewiringOfAbsentReflex(reflexName, rewComp);
 			}
-			CoreLog._.rewiringOfAbsentReflex(reflexName, rewComp);
+			if( pos >= rcs.size() ) {
+				return;
+			}
+			if( rewComp instanceof ReflexCreation ) {
+				// Don't delete the reflex if it exists: that must have been specified
+				//   with another rewiring component
+				if( reflex == null ) {
+					//create reflex and assign to "reflex" variable
+					assert(reflexName == rewComp.getReflexName());
+					reflex = createReflex((ReflexCreation)rewComp);
+				}
+				pos++;
+				rewComp = rcs.get(pos);
+			}
+			assert( reflex != null );
+			for(; pos<rcs.size(); pos++) {
+				rewComp = rcs.get(pos);
+				if( rewComp instanceof ReflexDeletion ) {
+					break;
+				}
+				// ReflexCreation and ReflexDeletion have been handled as separate cases
+				rewireResponse(reflex, rewComp);
+			}
+			if( pos >= rcs.size() ) {
+				return;
+			}
+			assert(rewComp instanceof ReflexDeletion);
+			assert(reflexName == rewComp.getReflexName());
+			deleteReflex((ReflexDeletion)rewComp);
 		}
-		//TODO: alter or create reflex, etc.
 	}
 	
 	public void propagateStimulus(Stimulus stimulus) throws InterruptedException {
