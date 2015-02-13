@@ -32,4 +32,10 @@ public class ResponseAlgorithmChange extends RewiringComponent {
 		return String.format("Reflex name [%s], response name [%s], new algorithm [%s].", 
 			_reflexName, _responseName, _newAlgorithm.toString());
 	}
+	public String getResponseName() {
+		return _responseName;
+	}
+	public Algorithm getAlgorithm() {
+		return _newAlgorithm;
+	}
 }

@@ -42,5 +42,10 @@ public class CoreLog {
 			rewComp.getClass().toString(), reflexName, rewComp.toString());
 		_pwr.println();
 	}
+	public void removalOfAbsentResponse(String reflexName, String responseName) {
+		_pwr.printf("Encountered removal of absent response [%s] from reflex [%s].",
+			responseName, reflexName);
+		_pwr.println();
+	}
 	
 }

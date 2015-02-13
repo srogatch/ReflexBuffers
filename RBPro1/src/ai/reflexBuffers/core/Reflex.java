@@ -11,6 +11,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import ai.reflexBuffers.core.tokens.Algorithm;
 import ai.reflexBuffers.core.tokens.ProvisionedAlgorithm;
 import ai.reflexBuffers.utils.diversity.Randomizer;
+import ai.reflexBuffers.utils.stability.CoreLog;
 
 // Here is emulation of stimulus-response architecture on top of von-Neumann architecture
 // https://en.wikipedia.org/wiki/Classical_conditioning
@@ -133,6 +134,26 @@ public class Reflex {
 	}
 	public void removeResponse(String responseName) {
 		assert( _lock.isHeldByCurrentThread() );
-		//TODO: implement removal of Response
+		Response response = _responses.get(responseName);
+		if( response == null ) {
+			CoreLog._.removalOfAbsentResponse(_name, responseName);
+			return;
+		}
+		response.removeActivator();
+		_responses.remove(responseName);
 	}
+	
+	// Create response or change its algorithm
+	public void setupResponse(String responseName, Algorithm algorithm) {
+		assert( _lock.isHeldByCurrentThread() );
+		Response response = _responses.get(responseName);
+		if( response == null ) {
+			response = new Response(this, responseName, algorithm);
+			_responses.put(responseName, response);
+		} else {
+			response.changeAlgorithm(algorithm);
+		}
+	}
+	
+	
 }

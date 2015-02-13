@@ -30,11 +30,14 @@ public class Response {
 		assert(_activator == null);
 		_activator = a;
 	}
+	public void removeActivator() {
+		_host.removeActivator(_activator);
+		_activator = null; // prepare to assign new activator
+	}
 	// Returns "true" in case with the new activation condition the response is ready
 	//   to activate
 	public boolean changeAlgorithm(Algorithm newAlgorithm) {
-		_host.removeActivator(_activator);
-		_activator = null; // prepare to assign new activator
+		removeActivator();
 		_algorithm = newAlgorithm;
 		Activator activator = new Activator(_host, this);
 		// Activator must have called Response.setActivator

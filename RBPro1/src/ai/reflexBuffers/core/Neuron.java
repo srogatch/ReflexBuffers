@@ -109,7 +109,7 @@ public class Neuron {
 		}
 		try {
 			reflex.getLock().lock();
-			//TODO: create response or change its algorithm
+			reflex.setupResponse(rac.getResponseName(), rac.getAlgorithm());
 		}
 		finally {
 			reflex.getLock().unlock();
