@@ -11,7 +11,7 @@ public class ResponseDeletion extends RewiringComponent {
 	}
 	@Override
 	public void implement(Neuron neuron) {
-		//TODO: implement response deletion
+		neuron.deleteResponse(this);
 	}
 	@Override
 	public String getReflexName() {
@@ -21,5 +21,8 @@ public class ResponseDeletion extends RewiringComponent {
 	public String toString() {
 		return String.format("Reflex name [%s], response name [%s]",  _reflexName,
 			_responseName);
+	}
+	public String getResponseName() {
+		return _responseName;
 	}
 }

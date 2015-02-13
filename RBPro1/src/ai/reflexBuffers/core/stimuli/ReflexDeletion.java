@@ -9,7 +9,7 @@ public class ReflexDeletion extends RewiringComponent {
 	}
 	@Override
 	public void implement(Neuron neuron) {
-		// TODO reflex deletion from the given Neuron
+		neuron.deleteReflex(this);
 	}
 	@Override
 	public String getReflexName() {

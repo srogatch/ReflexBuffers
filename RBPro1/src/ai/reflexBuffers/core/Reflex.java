@@ -131,4 +131,8 @@ public class Reflex {
 			}
 		}
 	}
+	public void removeResponse(String responseName) {
+		assert( _lock.isHeldByCurrentThread() );
+		//TODO: implement removal of Response
+	}
 }

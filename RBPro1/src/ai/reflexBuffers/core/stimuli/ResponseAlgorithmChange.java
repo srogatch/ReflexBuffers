@@ -20,7 +20,7 @@ public class ResponseAlgorithmChange extends RewiringComponent {
 	
 	@Override
 	public void implement(Neuron neuron) {
-		// TODO implement the change of Response algorithm
+		neuron.changeResponseAlgorithm(this);
 	}
 
 	@Override

@@ -9,7 +9,7 @@ public class ReflexCreation extends RewiringComponent {
 	}
 	@Override
 	public void implement(Neuron neuron) {
-		// TODO implement reflex creation on the given Neuron
+		neuron.createReflex(this);
 	}
 	@Override
 	public String getReflexName() {
