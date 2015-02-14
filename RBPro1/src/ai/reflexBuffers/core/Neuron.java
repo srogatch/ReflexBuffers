@@ -10,7 +10,7 @@ import java.util.concurrent.locks.ReentrantLock;
 import ai.reflexBuffers.core.line.Conveyor;
 import ai.reflexBuffers.core.stimuli.ReflexCreation;
 import ai.reflexBuffers.core.stimuli.ReflexDeletion;
-import ai.reflexBuffers.core.stimuli.ResponseAlgorithmChange;
+import ai.reflexBuffers.core.stimuli.SetupResponse;
 import ai.reflexBuffers.core.stimuli.ResponseDeletion;
 import ai.reflexBuffers.core.stimuli.RewiringComponent;
 import ai.reflexBuffers.core.tokens.ProvisionedAlgorithm;
@@ -100,16 +100,16 @@ public class Neuron {
 		}
 	}
 	
-	public void changeResponseAlgorithm(ResponseAlgorithmChange rac) {
-		String reflexName = rac.getReflexName();
+	public void setupResponse(SetupResponse rewComp) {
+		String reflexName = rewComp.getReflexName();
 		Reflex reflex = getReflex(reflexName);
 		if( reflex == null ) {
-			CoreLog._.rewiringOfAbsentReflex(reflexName, rac);
+			CoreLog._.rewiringOfAbsentReflex(reflexName, rewComp);
 			return;
 		}
 		try {
 			reflex.getLock().lock();
-			reflex.setupResponse(rac.getResponseName(), rac.getAlgorithm());
+			reflex.setupResponse(rewComp.getResponseName(), rewComp.getAlgorithm());
 		}
 		finally {
 			reflex.getLock().unlock();
