@@ -1,5 +1,5 @@
 package ai.reflexBuffers.core.alg;
 
-public class Implementation {
-
+public abstract class Implementation {
+	public abstract void run(Provision provision);
 }

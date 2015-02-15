@@ -4,6 +4,7 @@ import java.io.BufferedWriter;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Map;
@@ -46,6 +47,22 @@ public class CoreLog {
 		_pwr.printf("Encountered removal of absent response [%s] from reflex [%s].",
 			responseName, reflexName);
 		_pwr.println();
+	}
+	public void insufficientProvision(String bufferName) {
+		_pwr.printf("Requested more than provisioned in buffer [%s].", bufferName);
+		_pwr.println();
+		new Throwable().printStackTrace(_pwr);
+	}
+	public void unexhaustedProvision(Map<String, ArrayList<Token>> remaining) {
+		_pwr.println("Unexhausted provision detected.");
+		for(Map.Entry<String, ArrayList<Token>> e : remaining.entrySet()) {
+			_pwr.printf("  Buffer [%s] has tokens:", e.getKey());
+			for(Token token : e.getValue()) {
+				_pwr.printf(" [%s]", token.toString());
+			}
+			_pwr.println();
+		}
+		new Throwable().printStackTrace(_pwr);
 	}
 	
 }

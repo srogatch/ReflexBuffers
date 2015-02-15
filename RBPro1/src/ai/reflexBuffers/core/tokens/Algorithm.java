@@ -6,8 +6,7 @@ import ai.reflexBuffers.core.alg.Implementation;
 
 public class Algorithm extends Token {
 	private ActivationCondition _activationCondition = new ActivationCondition();
-	// do nothing
-	private Implementation _implementation = new Implementation();
+	private Implementation _implementation = null;
 	
 	public Algorithm(Algorithm prototype) {
 		//TODO: perform a deep copy of the prototype algorithm
