@@ -1,6 +1,7 @@
 package ai.reflexBuffers.utils.stability;
 
 import java.io.BufferedWriter;
+import java.io.Closeable;
 import java.io.FileWriter;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
@@ -63,6 +64,14 @@ public class CoreLog {
 			_pwr.println();
 		}
 		new Throwable().printStackTrace(_pwr);
+	}
+	public void failedToClose(Closeable c) {
+		_pwr.println("Failed to close: " + c.toString());
+		new Throwable().printStackTrace(_pwr);
+	}
+	public void malformedDimacsCnf(String line) {
+		_pwr.println("Malformed Dimacs CNF at: " + line);
+		new Throwable().printStackTrace(); // to see where exactly in the parser
 	}
 	
 }
