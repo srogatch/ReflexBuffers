@@ -11,4 +11,7 @@ public class BooleanFormula {
 	public BooleanTreeNode getRoot() {
 		return _root;
 	}
+	public int getVarCount() {
+		return _nVars;
+	}
 }
